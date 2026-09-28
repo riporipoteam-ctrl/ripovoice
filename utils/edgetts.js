@@ -279,6 +279,8 @@ const EDGE_UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0';
 const OUTPUT_FORMAT = 'audio-24khz-48kbitrate-mono-mp3';
 const SYNTH_TIMEOUT_MS = 20_000;
+// Opus packets are encoded/decoded at 48 kHz throughout (see getOpus()).
+const SYNTH_SAMPLE_RATE = 48000;
 
 const VOICES = {
   bolt: { voice: 'en-US-ChristopherNeural', rate: '+15%', pitch: '+0Hz' },
