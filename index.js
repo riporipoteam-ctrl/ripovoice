@@ -6,7 +6,7 @@
  */
 
 require('dotenv').config();
-const { Client, GatewayIntentBits, Collection, Events } = require('discord.js');
+const { Client, GatewayIntentBits, Collection, Events, REST, Routes } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 const voice = require('./utils/voice');
@@ -22,10 +22,34 @@ for (const file of fs.readdirSync(path.join(__dirname, 'commands'))) {
   commands.set(cmd.data.name, cmd);
 }
 
-client.once(Events.ClientReady, () => {
+client.once(Events.ClientReady, async () => {
   console.log(`[ready] Logged in as ${client.user.tag}`);
+  try {
+    await registerCommands();
+  } catch (err) {
+    console.error('[deploy] registration failed (commands may be stale):', err.message);
+  }
   voice.watchVoice(client);
 });
+
+/**
+ * Self-registers the 3 guild slash commands on every startup.
+ * Idempotent — Discord just overwrites the same commands.
+ * Skips cleanly when CLIENT_ID/GUILD_ID/DISCORD_TOKEN are missing,
+ * so the panel smoke test (no token yet) still fails only on login.
+ */
+async function registerCommands() {
+  const { CLIENT_ID, GUILD_ID, DISCORD_TOKEN } = process.env;
+  if (!CLIENT_ID || !GUILD_ID || !DISCORD_TOKEN) {
+    console.log('[deploy] Skipping command registration (missing CLIENT_ID/GUILD_ID/DISCORD_TOKEN).');
+    return;
+  }
+  const body = [];
+  for (const cmd of commands.values()) body.push(cmd.data.toJSON());
+  const rest = new REST({ version: '10' }).setToken(DISCORD_TOKEN);
+  await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), { body });
+  console.log(`[deploy] Registered ${body.length} guild commands.`);
+}
 
 client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
